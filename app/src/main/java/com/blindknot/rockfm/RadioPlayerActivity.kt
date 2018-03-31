@@ -15,17 +15,17 @@ import java.util.concurrent.TimeUnit
 import com.google.android.things.contrib.driver.button.Button
 import com.google.android.things.contrib.driver.apa102.Apa102
 import com.google.android.things.contrib.driver.button.ButtonInputDriver
-import com.google.android.things.contrib.driver.ht16k33.AlphanumericDisplay;
+import com.google.android.things.contrib.driver.ht16k33.AlphanumericDisplay
 import com.google.android.things.pio.Gpio
-import com.google.android.things.pio.PeripheralManagerService
+import com.google.android.things.pio.PeripheralManager
 
 class RadioPlayerActivity : Activity() {
 
     companion object {
         private val TAG = RadioPlayerActivity::class.java.simpleName
 
-        private val stationStream = "http://rockfm.cope.stream.flumotion.com/cope/rockfm/playlist.m3u8"
-        private val stationName = "ROCK FM"
+        private const val stationStream = "http://rockfm.cope.stream.flumotion.com/cope/rockfm/playlist.m3u8"
+        private const val stationName = "ROCK FM"
 
         private enum class Rpi3(val io: String) {
             BCM6("BCM6"),
@@ -38,25 +38,25 @@ class RadioPlayerActivity : Activity() {
             SPI("SPI0.0"),
         }
 
-        private val displaySize = 4
+        private const val displaySize = 4
 
-        private val ledStripBrightness = 1
-        private val ledStripSize = 7
+        private const val ledStripBrightness = 1
+        private const val ledStripSize = 7
     }
 
-    lateinit private var buttonVolumeUp: ButtonInputDriver
-    lateinit private var buttonVolumeDown: ButtonInputDriver
-    lateinit private var buttonSoundMute: ButtonInputDriver
+    private lateinit var buttonVolumeUp: ButtonInputDriver
+    private lateinit var buttonVolumeDown: ButtonInputDriver
+    private lateinit var buttonSoundMute: ButtonInputDriver
 
-    lateinit private var ledUp: Gpio
-    lateinit private var ledDown: Gpio
-    lateinit private var ledMute: Gpio
+    private lateinit var ledUp: Gpio
+    private lateinit var ledDown: Gpio
+    private lateinit var ledMute: Gpio
 
     private var display: AlphanumericDisplay? = null
     private var ledStrip: Apa102? = null
 
-    lateinit private var audio: AudioManager
-    lateinit private var mediaPlayer: MediaPlayer
+    private lateinit var audio: AudioManager
+    private lateinit var mediaPlayer: MediaPlayer
     private var scroller: Scroller? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,6 +89,7 @@ class RadioPlayerActivity : Activity() {
 
     /**
      * Handle on button pressed event.
+     * Depending on the button it might set the volume up, down or mute.
      *
      * @param keyCode The value in event.getKeyCode()
      * @param event Description of the key event
@@ -138,7 +139,7 @@ class RadioPlayerActivity : Activity() {
     }
 
     /**
-     * Helper method for common operations when handling (un)mute states.
+     * Helper method for common operations when handling (un)muted states.
      *
      * @param volume The sound volume value
      */
@@ -188,23 +189,31 @@ class RadioPlayerActivity : Activity() {
 
     /**
      * Setup GPIO leds, button leds on the Rainbow HAT.
+     * 
      * TODO: make leds optional
      */
     private fun setupLeds() {
         try {
-            val pioService = PeripheralManagerService()
-            ledUp = pioService.openGpio(Rpi3.BCM26.io)
-            ledUp.setEdgeTriggerType(Gpio.EDGE_NONE)
-            ledUp.setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW)
-            ledUp.setActiveType(Gpio.ACTIVE_HIGH)
-            ledDown = pioService.openGpio(Rpi3.BCM19.io)
-            ledDown.setEdgeTriggerType(Gpio.EDGE_NONE)
-            ledDown.setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW)
-            ledDown.setActiveType(Gpio.ACTIVE_HIGH)
-            ledMute = pioService.openGpio(Rpi3.BCM6.io)
-            ledMute.setEdgeTriggerType(Gpio.EDGE_NONE)
-            ledMute.setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW)
-            ledMute.setActiveType(Gpio.ACTIVE_HIGH)
+            val pioService = PeripheralManager.getInstance()
+
+            ledUp = pioService.openGpio(Rpi3.BCM26.io).apply {
+                setEdgeTriggerType(Gpio.EDGE_NONE)
+                setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW)
+                setActiveType(Gpio.ACTIVE_HIGH)
+            }
+
+            ledDown = pioService.openGpio(Rpi3.BCM19.io).apply {
+                setEdgeTriggerType(Gpio.EDGE_NONE)
+                setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW)
+                setActiveType(Gpio.ACTIVE_HIGH)
+            }
+
+            ledMute = pioService.openGpio(Rpi3.BCM6.io).apply {
+                setEdgeTriggerType(Gpio.EDGE_NONE)
+                setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW)
+                setActiveType(Gpio.ACTIVE_HIGH)
+            }
+
             Log.d(TAG, "Initialized GPIO leds")
         } catch (e: IOException) {
             throw RuntimeException("Error initializing leds", e)
@@ -233,8 +242,8 @@ class RadioPlayerActivity : Activity() {
     private fun setupDisplay() {
         try {
             display = AlphanumericDisplay(Rpi3.I2C1.io)
-            display?.let { display ->
-                display.setEnabled(true)
+            display?.let {
+                it.setEnabled(true)
                 updateDisplay(stationName)
             }
             Log.d(TAG, "Initialized I2C Display")
@@ -249,11 +258,11 @@ class RadioPlayerActivity : Activity() {
      * Disable the I2C1 display.
      */
     private fun releaseDisplay() {
-        display?.let { display ->
+        display?.let {
             try {
-                display.clear()
-                display.setEnabled(false)
-                display.close()
+                it.clear()
+                it.setEnabled(false)
+                it.close()
             } catch (e: IOException) {
                 throw RuntimeException("Error releasing I2C display", e)
             }
@@ -264,7 +273,6 @@ class RadioPlayerActivity : Activity() {
      * Setup the SPI led strip, 7 led strip on the Rainbow HAT.
      */
     private fun setupLedStrip() {
-        // Initialize the SPI led strip
         try {
             ledStrip = Apa102(Rpi3.SPI.io, Apa102.Mode.BGR)
             ledStrip?.brightness = ledStripBrightness
@@ -281,11 +289,11 @@ class RadioPlayerActivity : Activity() {
      * Disable the SPI led strip.
      */
     private fun releaseLedStrip() {
-        ledStrip?.let { strip ->
+        ledStrip?.let {
             try {
-                strip.brightness = 0
-                strip.write(IntArray(ledStripSize))
-                strip.close()
+                it.brightness = 0
+                it.write(IntArray(ledStripSize))
+                it.close()
             } catch (e: IOException) {
                 Log.e(TAG, "Error releasing SPI led strip", e)
             }
@@ -311,17 +319,16 @@ class RadioPlayerActivity : Activity() {
      * display size.
      *
      * @param text Test to display
-     * @param display Display instance to use
      */
     private fun updateDisplay(text: String) {
-        display?.let { display ->
-            display.clear()
+        display?.let {
+            it.clear()
             scroller?.cancel (true)
             if (text.length > displaySize) {
                 scroller = Scroller()
                 scroller?.execute(text)
             } else {
-                display.display(text)
+                it.display(text)
             }
         }
     }
@@ -333,21 +340,21 @@ class RadioPlayerActivity : Activity() {
      * @param maxValue Max value supported
      */
     private fun updateLedStrip(value: Int, maxValue: Int) {
-        ledStrip?.let { strip ->
+        ledStrip?.let {
             val affectedLeds = value.toFloat().div(maxValue.toFloat()).times(ledStripSize).toInt()
             val rainbow = IntArray(ledStripSize, { _ -> 0 })
             for (i in ledStripSize.minus(affectedLeds) until rainbow.size) {
                 val hsv = floatArrayOf(i * 360f / rainbow.size, 1.0f, 1.0f)
                 rainbow[i] = Color.HSVToColor(255, hsv)
             }
-            strip.write(rainbow)
+            it.write(rainbow)
         }
     }
 
     /**
      * The text scroller class as an async task.
      */
-    internal inner class Scroller : AsyncTask<String, Void, Boolean>() {
+    private inner class Scroller : AsyncTask<String, Void, Boolean>() {
         override fun doInBackground(vararg strings: String): Boolean? {
             val scrollText = "   ${strings[0]} "
             while (true) {
@@ -361,22 +368,20 @@ class RadioPlayerActivity : Activity() {
 
     /**
      * The media player class as an async task.
+     *
+     * TODO: Attempt to reconnect if stream or connection fail
      */
-    internal inner class Player : AsyncTask<String, Void, Boolean>() {
+    private inner class Player : AsyncTask<String, Void, Boolean>() {
         override fun doInBackground(vararg strings: String): Boolean? {
             try {
                 mediaPlayer.setDataSource(strings[0])
-                mediaPlayer.setOnPreparedListener(object : MediaPlayer.OnPreparedListener {
-                    override fun onPrepared(mediaPlayer: MediaPlayer) {
-                        mediaPlayer.start()
-                    }
-                })
-                mediaPlayer.setOnCompletionListener(object : MediaPlayer.OnCompletionListener {
-                    override fun onCompletion(mediaPlayer: MediaPlayer) {
-                        mediaPlayer.stop()
-                        mediaPlayer.reset()
-                    }
-                })
+                mediaPlayer.setOnPreparedListener {
+                    it.start()
+                }
+                mediaPlayer.setOnCompletionListener {
+                    it.stop()
+                    it.reset()
+                }
                 mediaPlayer.prepare()
             } catch (e: Exception) {
                 Log.e(TAG, e.message)
